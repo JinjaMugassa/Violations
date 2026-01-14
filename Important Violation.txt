@@ -1,0 +1,11 @@
+ 01_80 KPH_RPT_SPEED VIOLATION REPORT
+ RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP WITH COUNT ONLY- TRANSIT
+ 01_RPT_IDLING VIOLATIONS REPORT (GROUP)
+ 01_RPT_NIGHT DRIVING REPORT (GROUP)
+
+
+
+Extract just the date=INT(B2)
+Count events per truck per day=COUNTIFS(A:A, A2, B:B, B2)
+Step 3: Create a unique key (Truck + Date) = =A2 & "-" & TEXT(B2,"yyyy-mm-dd")
+Step 4: Flag the first occurrence = =IF(COUNTIF($H$2:H2, H2)=1, "Keep", "Skip")

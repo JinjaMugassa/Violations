@@ -1,0 +1,989 @@
+[
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "1",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP-TRANSIT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "2",
+    "template_name": "001_RPT_MILEAGE_GROUP_POWER BI",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "3",
+    "template_name": "01_80 KPH_RPT_SPEED VIOLATION REPORT ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "4",
+    "template_name": "VEHICLE MOVEMENT REPORT (SINGLE)",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "5",
+    "template_name": "TRIP REPORT DEMOX",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "6",
+    "template_name": "01_RPT_NIGHT DRIVING REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "7",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD DETAILLED  REPORT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "8",
+    "template_name": "RPT_LIVE STATUS  (GROUP) - ALL VEHICLES_ ANY GROUP DETAILLED",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "9",
+    "template_name": "RPT_ALL VIOLATIONS REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "10",
+    "template_name": "RPT_IDLING VIOLATIONS GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "11",
+    "template_name": "01_RPT_IDLING VIOLATIONS REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "12",
+    "template_name": "IDLING VIOLATIONS REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "13",
+    "template_name": "VEHICLE MOVEMENT REPORT(average)",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "14",
+    "template_name": "RPT_SPEEDING 30KPH KIBITI VIOLATIONS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "15",
+    "template_name": "VEHICLE MOVEMENT REPORT (SINGLE)-WITH FUEL",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "16",
+    "template_name": "VEHICLE MOVEMENT REPORT (SINGLE)-incident with geofence",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "17",
+    "template_name": "IDLING VIOLATIONS REPORT (byGROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "18",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI BORDER GEOFENCE LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "19",
+    "template_name": "VEHICLE MOVEMENT REPORT (SINGLE)-GENERAL REPORT",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "20",
+    "template_name": "START & STOP REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "21",
+    "template_name": "01 RPT GL SPEEDING REPORT SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "22",
+    "template_name": "01 RPT FUEL REPORT SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "23",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- IN TRANSIT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "24",
+    "template_name": "VEHICLE MOVEMENT REPORT (SINGLE) TESTING DATES AND TIME ",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "25",
+    "template_name": "TOP TEN",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "26",
+    "template_name": "02 RPT REFUELS",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "27",
+    "template_name": "RPT_VEHICLE HISTORY REPORT",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "28",
+    "template_name": "FUEL DRAINS",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "29",
+    "template_name": "msg tracing",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "30",
+    "template_name": "New report",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "31",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- GSM CARS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "33",
+    "template_name": "01_RPT_TRIPS_WITH FUEL_ GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "34",
+    "template_name": "TOTAL MOVING TIME (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "35",
+    "template_name": "TOTAL MOVING TIME(SINGLE)",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "36",
+    "template_name": "001_Fuel Report_Group",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "37",
+    "template_name": "000_RPT_REFUELS_GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "38",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "39",
+    "template_name": "000_FUEL DRAINS_GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "40",
+    "template_name": "TRIP REPORT incident report",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "41",
+    "template_name": "HARSH BRAKE VIOLATIONS REPORT _SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "42",
+    "template_name": "RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "43",
+    "template_name": "RPT_IDLING VIOLATIONS REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "44",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "45",
+    "template_name": "Mil Report",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "46",
+    "template_name": "NEW Fuel Report per Truck ",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "47",
+    "template_name": "NEW Fuel deficit  Report Group Summary ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "48",
+    "template_name": "START & STOP REPORT (SINGLE)",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "49",
+    "template_name": "NEW Refuel Report -Group",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "50",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI BORDER GEOFENCE_ DAILY BORDER REPORT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "51",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT_BORDER DAILY REPORT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "52",
+    "template_name": "RPT_00_IDLING VIOLATIONS REPORT (GROUP)_ALL EVENTS_GALCO_NEW",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "53",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP-SHEQ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "54",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-LOCAL-POWER",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "55",
+    "template_name": "RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP WITH COUNT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "56",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- ANY GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "57",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT-TRANSIT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "58",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI-TUNDUMA PARKING RPT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "59",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "60",
+    "template_name": "VIOLATION_GEOFENCE_DODOMA",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "61",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER - SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "62",
+    "template_name": "test events_r",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "63",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI BORDER & MINE GEOFENCE",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "65",
+    "template_name": "85 KPH_RPT_SPEED VIOLATION REPORT  WITH COUNT V1.0_TEST",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "66",
+    "template_name": "RPT_STOP TIME",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "67",
+    "template_name": "RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP WITH COUNT ONLY-BI",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "68",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI MSOFT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "69",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP-TRANSIT-SPECIAL PROJECT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "70",
+    "template_name": "RPT_TRIP STOPS_POWER_BI",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "71",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP-SHEQ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "72",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP- GALCO ZAMBIA POWER BI",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "73",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT-  HEAVY MACHINE",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "74",
+    "template_name": "01_RPT_ HEAVY MACHINES-WORK HOURS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "75",
+    "template_name": "001_DETAILED REPORT_MSG_HEAVY MACHINE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "76",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP- GSM CARS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "77",
+    "template_name": "110KPH_RPT_SPEED VIOLATION REPORT  WITH COUNT - GSM CARS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "78",
+    "template_name": "RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP WITH COUNT ONLY- GSM CARS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "79",
+    "template_name": "DISTANCE TRAVELED REPORT(GROUP)- sino",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "80",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI- GENERAL_PETRODA PARKING",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "81",
+    "template_name": "003_RPT_NEW FUEL REPORT SINGLE GENSET",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "82",
+    "template_name": "RPT009_TRIP REPORT Detailed",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "83",
+    "template_name": "RPT_VEHICLE MOVEMENT REPORT (SINGLE)",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "84",
+    "template_name": "user report",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "85",
+    "template_name": "RPT_00_IDLING VIOLATIONS REPORT (GROUP) NEW_01",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "86",
+    "template_name": "RPT_ALL VIOLATIONS REPORT - SINGLE TRUCK",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "87",
+    "template_name": "000RPT_LAST TX -  ALL HOURLY REPORT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "88",
+    "template_name": "RPT_EXIT FROM DRC MINES v1",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "89",
+    "template_name": "RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP WITH COUNT ONLY- TRANSIT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "90",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT-LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "91",
+    "template_name": "TRIP SUMMARY/PER DAY - LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "92",
+    "template_name": "00_RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- GALCO TZ UNITS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "93",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT-  GALCO LTD",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "94",
+    "template_name": "01_RPT_ HEAVY MACHINES-WORK HOURS - SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "95",
+    "template_name": "003_RPT_NEW FUEL REPORT SINGLE MACHINES",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "97",
+    "template_name": "01_RPT_TRIPS_WITH FUEL_ SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "98",
+    "template_name": "!_g_test_003_RPT_NEW FUEL REPORT SINGLE MACHINES",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "99",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI- GENERAL_VUUKA",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "100",
+    "template_name": "AUDIT 2",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "101",
+    "template_name": "audit 3device",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "102",
+    "template_name": "01_80 KPH_RPT_SPEED VIOLATION REPORT  - LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "103",
+    "template_name": "RPT_HARSH BRAKE VIOLATIONS REPORT _GROUP WITH COUNT ONLY- LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "104",
+    "template_name": "RPT_00_IDLING VIOLATIONS REPORT (GROUP) NEW_01_ LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "105",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI- MOKAMBO PARKING RPT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "106",
+    "template_name": "PARKINGS OF THE TRUCKS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "107",
+    "template_name": "01_RPT_MILEAGE REPORT PER DAY_FINAL_POWER-GROUP - LOCAL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "108",
+    "template_name": "NIGHT DRIVING REPORT (GROUP) - GSM CARS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "109",
+    "template_name": "stop time_test",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "110",
+    "template_name": "01_RPT_NIGHT DRIVING REPORT - CASHEWNUT PROJECT(GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "111",
+    "template_name": "!gtest",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "112",
+    "template_name": "Copper live Tracking report ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "113",
+    "template_name": "GEOFENCE ENTRY DRC - VISA - TRANSIT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "114",
+    "template_name": "incident with Events",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "115",
+    "template_name": "GALCO _ ALL EVENTS_V1",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "116",
+    "template_name": "Events GALCO Single Truck",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "117",
+    "template_name": "GALCO _ ALL EVENTS_V1",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "118",
+    "template_name": "GALCO _ ALL EVENTS_V1_OVERSTAY 3HRS",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "119",
+    "template_name": "LIVE STATUS  (GROUP) - ALL VEHICLES_ ANY GROUP_WITH ADRESS AND GEOFENCE NAME",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "120",
+    "template_name": "01_RPT_TRIPS__ SINGLE",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "121",
+    "template_name": "01_RPT_FUEL_REPORT_GENSET GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "122",
+    "template_name": "RPT_GENSET SUMMARY GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "123",
+    "template_name": "RPT_TRIP STOPS_POWER_BI_MORE THAN 1HR",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "124",
+    "template_name": "RPT_00_ TRANSIT GOING PARKED MORE THAT IHR",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "125",
+    "template_name": "00RPT_PARKING MORE THAN 1HR",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "126",
+    "template_name": "NEW Fuel Report per Generator",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "127",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI _ LOCAL MOVEMENT TAT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "129",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- GEN",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "130",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI _ LOCAL MOVEMENT MARCH TO MAY REPORT ABDUL",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "131",
+    "template_name": "GENERATOR REPORT",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "132",
+    "template_name": "test1",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "133",
+    "template_name": "NIGHT DRIVING REPORT (GROUP) - GL BIKES",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "134",
+    "template_name": "CHECK IMAGE FROM CAMERA",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "135",
+    "template_name": "MOVEMENT  TRIP REPORT ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "136",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI- GENERAL_LUBUMBASHI PARKING",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "137",
+    "template_name": "RPT_ALL VIOLATIONS REPORT (GROUP)_SHEQ",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "138",
+    "template_name": "000_81KPH_RPT_SPEED VIOLATION REPORT  WITH COUNT - TRANSIT",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "139",
+    "template_name": "000_RPT_ALL VIOLATIONS _SPEEDING_TRANSIT_REPORT (GROUP)",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "140",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- GEN_ANY GROUP",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "141",
+    "template_name": "DRC - VISA",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "142",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- GEN",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "143",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- Parking",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "144",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI BORDER & MINE GEOFENCE- Smartsheets",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "145",
+    "template_name": "VIOLATION_GEOFENCE_POWER_BI- GENERAL_MJESHI PARKING",
+    "template_type": "Group"
+  }
+]
