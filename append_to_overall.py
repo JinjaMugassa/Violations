@@ -15,6 +15,38 @@ import pandas as pd
 from datetime import datetime, timedelta
 import xlwings as xw
 
+def refresh_pivot_tables_and_filter(wb, sheet_name, latest_date):
+    try:
+        sheet = wb.sheets[sheet_name]
+        print(f"\n📊 Refreshing pivot tables in '{sheet_name}'...")
+        
+        excel_sheet = sheet.api
+        pivot_tables = excel_sheet.PivotTables()
+        
+        print(f"  Found {pivot_tables.Count} pivot table(s)")
+        
+        for i in range(1, pivot_tables.Count + 1):
+            pivot = pivot_tables.Item(i)
+            print(f"  → Refreshing '{pivot.Name}'...")
+            
+            pivot.RefreshTable()
+            
+            # ✅ Correct way: Report Filter
+            try:
+                rpt_dt_field = pivot.PivotFields("RPT_DT")
+                rpt_dt_field.ClearAllFilters()
+                rpt_dt_field.CurrentPage = latest_date
+                print(f"    ✓ RPT_DT filtered to {latest_date}")
+            except Exception as e:
+                print(f"    ⚠ RPT_DT filter skipped: {e}")
+        
+        print("  ✓ All pivot tables refreshed")
+        return True
+    
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+        return False
+
 
 def find_overall_excel(base_folder):
     overall_files = glob.glob(os.path.join(base_folder, "OVERALL VIOLATIONS REPORT *.xlsx"))
@@ -33,6 +65,16 @@ def get_yesterday_date_string():
     yesterday = datetime.now() - timedelta(days=1)
     return yesterday.strftime("%d.%m.%Y")
 
+def get_latest_file(folder, keyword):
+    files = [
+        os.path.join(folder, f)
+        for f in os.listdir(folder)
+        if keyword in f and f.endswith('.xlsx')
+    ]
+    if not files:
+        return None
+    return max(files, key=os.path.getmtime)
+
 
 def extract_date_from_event_time(event_time_str):
     """Extract date from event time string."""
@@ -46,6 +88,19 @@ def extract_date_from_event_time(event_time_str):
     except Exception:
         pass
     
+    return ''
+
+def extract_date_ddmmyyyy(event_time_str):
+    try:
+        if pd.isna(event_time_str) or str(event_time_str).strip() == '':
+            return ''
+
+        dt = pd.to_datetime(event_time_str, errors='coerce')
+        if pd.notna(dt):
+            return dt.strftime("%d.%m.%Y")
+    except Exception:
+        pass
+
     return ''
 
 
@@ -166,7 +221,7 @@ def prepare_speed_data(raw_df, existing_df):
     }
     
     raw_df = raw_df.rename(columns=column_mapping)
-    raw_df['RPT_DT'] = raw_df['Time'].apply(extract_date_from_event_time)
+    raw_df['RPT_DT'] = raw_df['Time'].apply(extract_date_ddmmyyyy)
     raw_df['DRIVER NAME'] = ''
     
     target_columns = ['TRUCK NO', 'Time', 'RPT_DT', 'DRIVER NAME', 'MAX SPEED', 'Location', 'Speed limit', 'Count']
@@ -317,6 +372,182 @@ def append_to_sheet_xlwings(sheet, new_data_df, has_sn=True):
     return rows_added
 
 
+def read_forsheq_grand_totals(wb):
+    """
+    Reads Grand Total values from FOR SHEQ pivot tables.
+    Returns a dict mapping violation name -> grand total
+    """
+    sheet = wb.sheets["FOR SHEQ"]
+    pivots = sheet.api.PivotTables()
+
+    results = {}
+
+    for i in range(1, pivots.Count + 1):
+        pivot = pivots.Item(i)
+        name = pivot.Name
+        name_upper = name.upper()
+        
+        print(f"  Reading pivot table: {name}")
+
+        try:
+            # Try to get the grand total from the pivot table
+            data_body = pivot.DataBodyRange
+            grand_total = data_body.Cells(
+                data_body.Rows.Count,
+                data_body.Columns.Count
+            ).Value
+            print(f"    Grand total value: {grand_total}")
+        except Exception as e:
+            print(f"    ⚠ Could not read grand total: {e}")
+            grand_total = 0
+
+        # Match based on pivot table number and what we see in the image
+        # PivotTable9 = Early start (Grand Total: 2)
+        # PivotTable6 = HARSH BRAKE (Grand Total: 26)  
+        # PivotTable7 = Over Speeding (Grand Total: 583)
+        # PivotTable8 = Exceeded idle (Grand Total: 78)
+        
+        if name == "PivotTable9":
+            results["Early start"] = int(grand_total or 0)
+            print(f"    → Mapped to 'Early start'")
+        elif name == "PivotTable8":
+            results["Exceeded idle"] = int(grand_total or 0)
+            print(f"    → Mapped to 'Exceeded idle'")
+        elif name == "PivotTable6":
+            results["HARSH BRAKE"] = int(grand_total or 0)
+            print(f"    → Mapped to 'HARSH BRAKE'")
+        elif name == "PivotTable7":
+            results["Over Speeding"] = int(grand_total or 0)
+            print(f"    → Mapped to 'Over Speeding'")
+        # Fallback to keyword matching for other pivot tables
+        elif "NIGHT" in name_upper and "CONVOY" not in name_upper:
+            results["Night driving"] = int(grand_total or 0)
+            print(f"    → Mapped to 'Night driving'")
+        elif "CONVOY" in name_upper and "NIGHT" in name_upper:
+            results["Driving Without Convoy Night"] = int(grand_total or 0)
+            print(f"    → Mapped to 'Driving Without Convoy Night'")
+        elif "CONVOY" in name_upper and "DAY" in name_upper:
+            results["Driving Without Convoy Day"] = int(grand_total or 0)
+            print(f"    → Mapped to 'Driving Without Convoy Day'")
+
+    print(f"  Grand totals extracted: {results}")
+    return results
+
+
+def update_overall_summary_daily_row(wb, totals_dict, report_date):
+    """
+    Updates OVERALL SUMMARY daily row safely even if empty rows exist above table
+    """
+    # Find the OVERALL SUMMARY sheet (handle trailing spaces)
+    summary_sheet = None
+    for sheet in wb.sheets:
+        if 'OVERALL SUMMARY' in sheet.name.upper():
+            summary_sheet = sheet
+            break
+    
+    if not summary_sheet:
+        raise Exception("OVERALL SUMMARY sheet not found")
+    
+    sheet = summary_sheet
+
+    used = sheet.used_range
+    values = used.value
+
+    header_row = None
+    date_col = None
+
+    # 1️⃣ Find header row dynamically - look for common header keywords
+    header_keywords = ["DAYS", "DAY", "DATE", "NIGHT DRIVING", "EARLY START", "EXCEEDED IDLE", 
+                       "HARSH BRAKE", "OVER SPEEDING", "OVERSPEED"]
+    
+    for r_idx, row in enumerate(values, start=1):
+        if row:
+            # Convert row to uppercase strings and check for multiple keywords
+            row_upper = [str(c).upper().strip() if c else "" for c in row]
+            matches = sum(1 for keyword in header_keywords if any(keyword in cell for cell in row_upper))
+            
+            # If we find 3+ keywords in a row, it's likely the header
+            if matches >= 3:
+                header_row = r_idx
+                print(f"  Found header row at row {header_row}")
+                print(f"  Headers: {[str(c).strip() if c else '' for c in row[:15]]}")
+                break
+
+    if not header_row:
+        print("  ⚠ Could not find header row automatically")
+        print("  First 10 rows of OVERALL SUMMARY:")
+        for i, row in enumerate(values[:10], start=1):
+            print(f"    Row {i}: {[str(c)[:30] if c else '' for c in row[:10]]}")
+        raise Exception("Header row not found in OVERALL SUMMARY")
+
+    # 2️⃣ Map headers to columns (1-based indexing for Excel)
+    headers = values[header_row - 1]
+    col_map = {}
+    
+    print(f"  Raw headers: {headers[:15]}")
+    
+    for idx, h in enumerate(headers):
+        if h:
+            # Excel columns are 1-based, enumerate is 0-based, so we add 1
+            header_str = str(h).strip()
+            excel_col = idx + 1
+            col_map[header_str] = excel_col
+            col_map[header_str.upper()] = excel_col
+            
+            # Print first few mappings for debugging
+            if idx < 10:
+                col_letter = xw.utils.col_name(excel_col)
+                print(f"    '{header_str}' -> Column {excel_col} ({col_letter})")
+    
+    print(f"  Available columns: {list(col_map.keys())[:20]}")
+
+    # 3️⃣ Find the daily data row (skip monthly summary row)
+    # The structure is: Row 1 = Header, Row 2 = Monthly summary, Row 3 = Daily data
+    # We want to overwrite Row 3 (the daily row)
+    daily_row = header_row + 2  # Skip the monthly summary row
+    
+    print(f"  Daily data row (to overwrite): {daily_row}")
+
+    # 4️⃣ Update DATE
+    date_column_names = ["DAYS", "DAY", "DATE", "Days", "Day", "Date"]
+    date_col_idx = None
+    
+    for col_name in date_column_names:
+        if col_name in col_map:
+            date_col_idx = col_map[col_name]
+            break
+    date_column_names = ["DAYS", "DAY", "DATE", "Days", "Day", "Date"]
+    date_col_idx = None
+    
+    for col_name in date_column_names:
+        if col_name in col_map:
+            date_col_idx = col_map[col_name]
+            break
+    
+    if date_col_idx:
+        sheet.range((daily_row, date_col_idx)).value = report_date
+        sheet.range((daily_row, date_col_idx)).number_format = "dd-mmm-yy"
+        print(f"  ✓ Updated date to {report_date}")
+    else:
+        print(f"  ⚠ Date column not found (looked for: {date_column_names})")
+
+    # 5️⃣ Update violation columns
+    violations_updated = 0
+    for violation, value in totals_dict.items():
+        # Try both exact match and uppercase match
+        if violation in col_map:
+            sheet.range((daily_row, col_map[violation])).value = value
+            violations_updated += 1
+            print(f"  ✓ Updated {violation}: {value}")
+        elif violation.upper() in col_map:
+            sheet.range((daily_row, col_map[violation.upper()])).value = value
+            violations_updated += 1
+            print(f"  ✓ Updated {violation}: {value}")
+        else:
+            print(f"  ⚠ Column '{violation}' not found in headers")
+    
+    print(f"  Total violations updated: {violations_updated}/{len(totals_dict)}")
+
 
 def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
     """Append pulled violation data to OVERALL excel file using xlwings.
@@ -361,7 +592,7 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
         app.display_alerts = False
         app.screen_updating = False
         app.enable_events = False
- # Run in background
+        # Run in background
         wb = app.books.open(
             overall_path,
             update_links=False,
@@ -388,13 +619,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_idling) if existing_idling is not None else 0}")
             
-            idling_files = [f for f in os.listdir(raw_reports_folder) if 'IDLING' in f and f.endswith('.xlsx')]
-            
-            if not idling_files:
+            raw_idling_path = get_latest_file(raw_reports_folder, 'IDLING')
+
+            if not raw_idling_path:
                 print("  ⚠ No raw idling report found")
             else:
-                raw_idling_path = os.path.join(raw_reports_folder, idling_files[0])
-                print(f"  Reading: {idling_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_idling_path)}")
                 
                 raw_idling = pd.read_excel(raw_idling_path, sheet_name='Live Data')
                 print(f"  Raw data rows: {len(raw_idling)}")
@@ -421,14 +651,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_harsh) if existing_harsh is not None else 0}")
             
-            harsh_files = [f for f in os.listdir(raw_reports_folder) 
-                          if 'HARSH_BRAKE_SUMMARY' in f and f.endswith('.xlsx')]
-            
-            if not harsh_files:
+            raw_harsh_path = get_latest_file(raw_reports_folder, 'HARSH_BRAKE_SUMMARY')
+
+            if not raw_harsh_path:
                 print("  ⚠ No raw harsh brake report found")
             else:
-                raw_harsh_path = os.path.join(raw_reports_folder, harsh_files[0])
-                print(f"  Reading: {harsh_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_harsh_path)}")
                 
                 raw_harsh = pd.read_excel(raw_harsh_path, sheet_name='Sheet1')
                 print(f"  Raw data rows: {len(raw_harsh)}")
@@ -460,14 +688,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_speed) if existing_speed is not None else 0}")
             
-            speed_files = [f for f in os.listdir(raw_reports_folder) 
-                          if 'SPEED_VIOLATION' in f and f.endswith('.xlsx')]
-            
-            if not speed_files:
+            raw_speed_path = get_latest_file(raw_reports_folder, 'SPEED_VIOLATION')
+
+            if not raw_speed_path:
                 print("  ⚠ No raw speed violation report found")
             else:
-                raw_speed_path = os.path.join(raw_reports_folder, speed_files[0])
-                print(f"  Reading: {speed_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_speed_path)}")
                 
                 raw_speed = pd.read_excel(raw_speed_path, sheet_name='Live Data')
                 print(f"  Raw data rows: {len(raw_speed)}")
@@ -503,14 +729,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_night) if existing_night is not None else 0}")
             
-            night_files = [f for f in os.listdir(raw_reports_folder) 
-                          if 'NIGHT_DRIVING' in f and f.endswith('.xlsx')]
-            
-            if not night_files:
+            raw_night_path = get_latest_file(raw_reports_folder, 'NIGHT_DRIVING')
+
+            if not raw_night_path:
                 print("  ⚠ No raw night driving report found")
             else:
-                raw_night_path = os.path.join(raw_reports_folder, night_files[0])
-                print(f"  Reading: {night_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_night_path)}")
                 
                 raw_night = pd.read_excel(raw_night_path, sheet_name='Live Data')
                 print(f"  Raw data rows: {len(raw_night)}")
@@ -525,10 +749,24 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
         
         # Update filename date
         yesterday_date = get_yesterday_date_string()
+        yesterday_date_formatted = yesterday_date  # DD.MM.YYYY
+        
+        # Convert to YYYY-MM-DD for filtering
+        try:
+            dt = datetime.strptime(yesterday_date_formatted, "%d.%m.%Y")
+            latest_date_filter = dt.strftime("%Y-%m-%d")  # 2026-01-15
+        except Exception:
+            latest_date_filter = yesterday_date_formatted
+        
+        print(f"\n🔄 Refreshing Pivot Tables...")
+        refresh_pivot_tables_and_filter(wb, "FOR SHEQ", latest_date_filter)
+        grand_totals = read_forsheq_grand_totals(wb)
+        update_overall_summary_daily_row(wb, grand_totals, dt.strftime("%d-%b-%y"))
+        
+        # Save workbook
         new_filename = f"OVERALL VIOLATIONS REPORT {yesterday_date}.xlsx"
         new_path = os.path.join(overall_excel_folder, new_filename)
         
-        # Save workbook
         print(f"\n💾 Saving updated OVERALL excel...")
         wb.save(new_path)
         wb.close()
@@ -585,6 +823,4 @@ if __name__ == "__main__":
         sys.exit(1)
     
     raw_folder = sys.argv[1]
-    overall_folder = sys.argv[2]
-    
-    append_violations_to_overall(raw_folder, overall_folder)
+    overall_folder = sys.argv

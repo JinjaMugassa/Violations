@@ -3,7 +3,6 @@
 import pandas as pd
 import pytz
 
-
 TEMPLATE_ID = 6
 TEMPLATE_NAME = "01_RPT_NIGHT DRIVING REPORT (GROUP)"
 
@@ -233,6 +232,32 @@ def process_night_driving(df, template_id, api):
         if cols_to_remove:
             df = df.drop(columns=cols_to_remove)
             print(f"  ✓ Removed columns: {cols_to_remove}")
+
+            # --------------------------------------------------
+        # Filter out durations less than 10 minutes
+        # --------------------------------------------------
+        duration_col = None
+        for col in df.columns:
+            if 'duration' in str(col).lower():
+                duration_col = col
+                break
+
+        if duration_col:
+            before_duration = len(df)
+
+            # Convert duration like "0:16:40" to timedelta
+            duration_td = pd.to_timedelta(df[duration_col], errors='coerce')
+
+            # Keep only durations >= 10 minutes
+            df = df[duration_td >= pd.Timedelta(minutes=10)].copy()
+
+            print(
+                f"  ✓ Duration filtered (<10 min removed): "
+                f"{before_duration} -> {len(df)} rows"
+            )
+        else:
+            print("  ⚠ Warning: Duration column not found")
+
     
     except Exception as e:
         print(f"  ⚠ Warning: Night driving processing failed: {e}")
