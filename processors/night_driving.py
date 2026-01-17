@@ -1,5 +1,5 @@
 """Night driving report processor."""
-
+ 
 import pandas as pd
 import pytz
 
