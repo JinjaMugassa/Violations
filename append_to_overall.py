@@ -15,7 +15,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 import xlwings as xw
 
-def refresh_pivot_tables_and_filter(wb, sheet_name, latest_date):
+def refresh_pivot_tables_and_filter(wb, sheet_name, latest_date, latest_date_alt=None):
+    from datetime import datetime
+    
     try:
         sheet = wb.sheets[sheet_name]
         print(f"\n📊 Refreshing pivot tables in '{sheet_name}'...")
@@ -31,14 +33,75 @@ def refresh_pivot_tables_and_filter(wb, sheet_name, latest_date):
             
             pivot.RefreshTable()
             
-            # ✅ Correct way: Report Filter
+            # Determine which date format to use based on pivot table name
+            if pivot.Name == "PivotTable2":  # Over Speeding uses different format
+                filter_date = latest_date_alt if latest_date_alt else latest_date
+            else:
+                filter_date = latest_date
+            
+            # ✅ Try to filter by RPT_DT
             try:
                 rpt_dt_field = pivot.PivotFields("RPT_DT")
-                rpt_dt_field.ClearAllFilters()
-                rpt_dt_field.CurrentPage = latest_date
-                print(f"    ✓ RPT_DT filtered to {latest_date}")
+                
+                # First, try as Page Field (the standard way)
+                try:
+                    rpt_dt_field.ClearAllFilters()
+                    rpt_dt_field.CurrentPage = filter_date
+                    print(f"    ✓ RPT_DT filtered to {filter_date} (Page Field)")
+                except Exception as page_error:
+                    print(f"    ⚠ Page Field method failed: {page_error}")
+                    
+                    # List all available dates to see the format
+                    print(f"    📋 Available dates in RPT_DT field:")
+                    pivot_items = rpt_dt_field.PivotItems()
+                    available_dates = []
+                    for item_idx in range(1, min(pivot_items.Count + 1, 20)):
+                        try:
+                            item = pivot_items.Item(item_idx)
+                            item_name = str(item.Name)
+                            available_dates.append(item_name)
+                            print(f"       {item_idx}. '{item_name}'")
+                        except:
+                            pass
+                    
+                    # Try different date format variations
+                    date_formats_to_try = [
+                        filter_date,
+                        datetime.strptime(filter_date, "%Y-%m-%d").strftime("%d.%m.%Y") if "-" in filter_date else filter_date,
+                        datetime.strptime(filter_date, "%d.%m.%Y").strftime("%Y-%m-%d") if "." in filter_date else filter_date,
+                    ]
+                    
+                    matched_date = None
+                    for date_format in date_formats_to_try:
+                        if date_format in available_dates:
+                            matched_date = date_format
+                            print(f"    ✓ Found matching format: '{matched_date}'")
+                            break
+                    
+                    if matched_date:
+                        try:
+                            rpt_dt_field.ClearAllFilters()
+                            rpt_dt_field.CurrentPage = matched_date
+                            print(f"    ✓ RPT_DT filtered to {matched_date} (Converted format)")
+                        except Exception as convert_error:
+                            print(f"    ⚠ Still failed with converted format: {convert_error}")
+                    else:
+                        print(f"    ✗ Could not find date '{filter_date}' in any format")
+                        print(f"    Available formats tried: {date_formats_to_try[:3]}...")
+                    
             except Exception as e:
-                print(f"    ⚠ RPT_DT filter skipped: {e}")
+                print(f"    ⚠ RPT_DT filter failed completely: {e}")
+                # Try to list all available fields for debugging
+                try:
+                    print(f"    Available pivot fields in {pivot.Name}:")
+                    for field_idx in range(1, pivot.PivotFields().Count + 1):
+                        try:
+                            field = pivot.PivotFields(field_idx)
+                            print(f"      Field {field_idx}: {field.Name}")
+                        except:
+                            pass
+                except Exception as list_err:
+                    print(f"    ⚠ Could not list pivot fields: {list_err}")
         
         print("  ✓ All pivot tables refreshed")
         return True
@@ -111,14 +174,13 @@ def determine_offense(beginning_time):
         if pd.notna(dt):
             hour = dt.hour
             if hour in [4, 5]:
-                return "Early start"
+                return "Early start "
             elif hour in [20, 21, 22, 23]:
-                return "Night driving"
+                return "Night driving "
     except Exception:
         pass
     
     return ""
-
 
 def prepare_idling_data(raw_df, existing_df):
     """Prepare idling data for appending."""
@@ -374,69 +436,115 @@ def append_to_sheet_xlwings(sheet, new_data_df, has_sn=True):
 
 def read_forsheq_grand_totals(wb):
     """
-    Reads Grand Total values from FOR SHEQ pivot tables.
-    Returns a dict mapping violation name -> grand total
+    Reads values from FOR SHEQ pivot tables.
+    Returns a dict mapping violation name -> count
+    Also returns Night driving and Early start values separately
     """
     sheet = wb.sheets["FOR SHEQ"]
     pivots = sheet.api.PivotTables()
 
     results = {}
+    night_driving_value = None
+    early_start_value = None
 
     for i in range(1, pivots.Count + 1):
         pivot = pivots.Item(i)
         name = pivot.Name
-        name_upper = name.upper()
         
         print(f"  Reading pivot table: {name}")
 
         try:
-            # Try to get the grand total from the pivot table
-            data_body = pivot.DataBodyRange
-            grand_total = data_body.Cells(
-                data_body.Rows.Count,
-                data_body.Columns.Count
-            ).Value
-            print(f"    Grand total value: {grand_total}")
+            # For PivotTable9 which has both Night driving and Early start in COLUMNS
+            if name == "PivotTable9":
+                table_range = pivot.TableRange1
+                print(f"    PivotTable9 table has {table_range.Rows.Count} rows, {table_range.Columns.Count} columns")
+                
+                # Find the Grand Total row (last row of the table)
+                grand_total_row_idx = table_range.Rows.Count
+                
+                # Since headers are empty, we need to check the ROW LABELS instead
+                # Look at row 2 (first data row after header) to see what offense types are listed
+                print(f"    Checking row labels to identify columns:")
+                
+                for col_idx in range(1, table_range.Columns.Count + 1):
+                    header_cell = table_range.Cells(1, col_idx)
+                    header = str(header_cell.Value).strip().upper() if header_cell.Value else ""
+                    
+                    # Get the value from the Grand Total row for this column
+                    value_cell = table_range.Cells(grand_total_row_idx, col_idx)
+                    value = value_cell.Value
+                    
+                    # Also check what's in row 2 (first data row) to see the label
+                    label_cell = table_range.Cells(2, col_idx) if table_range.Rows.Count > 1 else None
+                    label = str(label_cell.Value).strip().upper() if label_cell and label_cell.Value else ""
+                    
+                    print(f"      Column {col_idx}: Header='{header}', Row2Label='{label}', Grand Total={value}")
+                    
+                    if value and str(value).replace('.0', '').replace('.', '').isdigit():
+                        try:
+                            count = int(float(value))
+                        except:
+                            count = 0
+                        
+                        # Skip column 1 (it's the row labels column)
+                        if col_idx == 1:
+                            continue
+                        
+                        # Match by row label if header is empty
+                        if label and ("EARLY" in label or "START" in label):
+                            early_start_value = count
+                            results["Early start"] = count
+                            print(f"        → Column {col_idx} is Early start (for C4): {count}")
+                        elif label and ("NIGHT" in label or "DRIVING" in label):
+                            night_driving_value = count
+                            results["Night driving"] = count
+                            print(f"        → Column {col_idx} is Night driving (for D4): {count}")
+                        # If no label, use column position as fallback
+                        elif col_idx == 2:
+                            # Assume column 2 is Early start
+                            early_start_value = count
+                            results["Early start"] = count
+                            print(f"        → Column 2 (assumed Early start for C4): {count}")
+                        elif col_idx == 3:
+                            # Assume column 3 is Night driving
+                            night_driving_value = count
+                            results["Night driving"] = count
+                            print(f"        → Column 3 (assumed Night driving for D4): {count}")
+                
+            else:
+                # For other pivot tables, just get the grand total
+                grand_total = pivot.DataBodyRange.Cells(
+                    pivot.DataBodyRange.Rows.Count,
+                    pivot.DataBodyRange.Columns.Count
+                ).Value
+                print(f"    Grand total value: {grand_total}")
+                
+                if name == "PivotTable8":
+                    results["Exceeded idle"] = int(grand_total or 0)
+                    print(f"    → Mapped to 'Exceeded idle'")
+                elif name == "PivotTable6":
+                    results["HARSH BRAKE"] = int(grand_total or 0)
+                    print(f"    → Mapped to 'HARSH BRAKE'")
+                elif name in ["PivotTable2", "PivotTable7"]:
+                    results["Over Speeding"] = int(grand_total or 0)
+                    print(f"    → Mapped to 'Over Speeding'")
+                
         except Exception as e:
-            print(f"    ⚠ Could not read grand total: {e}")
-            grand_total = 0
-
-        # Match based on pivot table number and what we see in the image
-        # PivotTable9 = Early start (Grand Total: 2)
-        # PivotTable6 = HARSH BRAKE (Grand Total: 26)  
-        # PivotTable7 = Over Speeding (Grand Total: 583)
-        # PivotTable8 = Exceeded idle (Grand Total: 78)
-        
-        if name == "PivotTable9":
-            results["Early start"] = int(grand_total or 0)
-            print(f"    → Mapped to 'Early start'")
-        elif name == "PivotTable8":
-            results["Exceeded idle"] = int(grand_total or 0)
-            print(f"    → Mapped to 'Exceeded idle'")
-        elif name == "PivotTable6":
-            results["HARSH BRAKE"] = int(grand_total or 0)
-            print(f"    → Mapped to 'HARSH BRAKE'")
-        elif name == "PivotTable7":
-            results["Over Speeding"] = int(grand_total or 0)
-            print(f"    → Mapped to 'Over Speeding'")
-        # Fallback to keyword matching for other pivot tables
-        elif "NIGHT" in name_upper and "CONVOY" not in name_upper:
-            results["Night driving"] = int(grand_total or 0)
-            print(f"    → Mapped to 'Night driving'")
-        elif "CONVOY" in name_upper and "NIGHT" in name_upper:
-            results["Driving Without Convoy Night"] = int(grand_total or 0)
-            print(f"    → Mapped to 'Driving Without Convoy Night'")
-        elif "CONVOY" in name_upper and "DAY" in name_upper:
-            results["Driving Without Convoy Day"] = int(grand_total or 0)
-            print(f"    → Mapped to 'Driving Without Convoy Day'")
+            print(f"    ⚠ Could not read pivot table: {e}")
+            import traceback
+            traceback.print_exc()
 
     print(f"  Grand totals extracted: {results}")
-    return results
+    print(f"  Night driving (for D4): {night_driving_value}")
+    print(f"  Early start (for C4): {early_start_value}")
+    
+    return results, night_driving_value, early_start_value
 
 
-def update_overall_summary_daily_row(wb, totals_dict, report_date):
+def update_overall_summary_daily_row(wb, totals_dict, report_date, night_driving_val, early_start_val):
     """
     Updates OVERALL SUMMARY daily row safely even if empty rows exist above table
+    Now also writes Night driving to C4 and Early start to D4 directly
     """
     # Find the OVERALL SUMMARY sheet (handle trailing spaces)
     summary_sheet = None
@@ -454,7 +562,6 @@ def update_overall_summary_daily_row(wb, totals_dict, report_date):
     values = used.value
 
     header_row = None
-    date_col = None
 
     # 1️⃣ Find header row dynamically - look for common header keywords
     header_keywords = ["DAYS", "DAY", "DATE", "NIGHT DRIVING", "EARLY START", "EXCEEDED IDLE", 
@@ -484,7 +591,7 @@ def update_overall_summary_daily_row(wb, totals_dict, report_date):
     headers = values[header_row - 1]
     col_map = {}
     
-    print(f"  Raw headers: {headers[:15]}")
+    print(f"  Raw headers (first 15): {headers[:15]}")
     
     for idx, h in enumerate(headers):
         if h:
@@ -497,57 +604,112 @@ def update_overall_summary_daily_row(wb, totals_dict, report_date):
             # Print first few mappings for debugging
             if idx < 10:
                 col_letter = xw.utils.col_name(excel_col)
-                print(f"    '{header_str}' -> Column {excel_col} ({col_letter})")
+                print(f"    Header '{header_str}' -> Column {excel_col} ({col_letter})")
     
     print(f"  Available columns: {list(col_map.keys())[:20]}")
 
     # 3️⃣ Find the daily data row (skip monthly summary row)
-    # The structure is: Row 1 = Header, Row 2 = Monthly summary, Row 3 = Daily data
-    # We want to overwrite Row 3 (the daily row)
     daily_row = header_row + 2  # Skip the monthly summary row
     
-    print(f"  Daily data row (to overwrite): {daily_row}")
+    print(f"  Daily data row (to update): {daily_row}")
 
-    # 4️⃣ Update DATE
+    # 4️⃣ Determine if we need to shift columns (column A is empty/for row numbers)
+    cell_a_value = sheet.range((daily_row, 1)).value
+    col_shift = 0
+    if cell_a_value is None or str(cell_a_value).strip() in ['', 'None']:
+        print(f"  Column A is empty (row numbers), shifting all data by +1 column")
+        col_shift = 1
+    
+    # 5️⃣ Update DATE
     date_column_names = ["DAYS", "DAY", "DATE", "Days", "Day", "Date"]
     date_col_idx = None
     
     for col_name in date_column_names:
         if col_name in col_map:
-            date_col_idx = col_map[col_name]
-            break
-    date_column_names = ["DAYS", "DAY", "DATE", "Days", "Day", "Date"]
-    date_col_idx = None
-    
-    for col_name in date_column_names:
-        if col_name in col_map:
-            date_col_idx = col_map[col_name]
+            date_col_idx = col_map[col_name] + col_shift
             break
     
     if date_col_idx:
+        date_col_letter = xw.utils.col_name(date_col_idx)
+        print(f"  Writing date '{report_date}' to cell {date_col_letter}{daily_row}")
         sheet.range((daily_row, date_col_idx)).value = report_date
         sheet.range((daily_row, date_col_idx)).number_format = "dd-mmm-yy"
         print(f"  ✓ Updated date to {report_date}")
     else:
         print(f"  ⚠ Date column not found (looked for: {date_column_names})")
 
-    # 5️⃣ Update violation columns
+    # 6️⃣ DIRECTLY write Night driving to C4 and Early start to D4
+    # 6️⃣ Write Night driving and Early start using header mapping, not direct cell references
+    print(f"\n  📝 Writing PivotTable9 values:")
+
+    # Find the actual columns for Night driving and Early start
+    night_col_idx = None
+    early_col_idx = None
+
+    for col_name in ["Night driving", "NIGHT DRIVING"]:
+        if col_name in col_map:
+            night_col_idx = col_map[col_name] + col_shift
+            break
+
+    for col_name in ["Early start", "EARLY START"]:
+        if col_name in col_map:
+            early_col_idx = col_map[col_name] + col_shift
+            break
+
+    if early_start_val is not None and early_col_idx:
+        early_col_letter = xw.utils.col_name(early_col_idx)
+        sheet.range((daily_row, early_col_idx)).value = early_start_val
+        print(f"    ✓ Cell {early_col_letter}{daily_row} (Early start) = {early_start_val}")
+    else:
+        if early_col_idx:
+            # If no value, write 0
+            early_col_letter = xw.utils.col_name(early_col_idx)
+            sheet.range((daily_row, early_col_idx)).value = 0
+            print(f"    ✓ Cell {early_col_letter}{daily_row} (Early start) = 0 (no data)")
+
+    if night_driving_val is not None and night_col_idx:
+        night_col_letter = xw.utils.col_name(night_col_idx)
+        sheet.range((daily_row, night_col_idx)).value = night_driving_val
+        print(f"    ✓ Cell {night_col_letter}{daily_row} (Night driving) = {night_driving_val}")
+    else:
+        if night_col_idx:
+            # If no value, write 0
+            night_col_letter = xw.utils.col_name(night_col_idx)
+            sheet.range((daily_row, night_col_idx)).value = 0
+            print(f"    ✓ Cell {night_col_letter}{daily_row} (Night driving) = 0 (no data)")
+        
+  
+    # 7️⃣ Update other violation columns (APPLY shift like the others!)
+    violations_to_update = ["Exceeded idle", "HARSH BRAKE", "Over Speeding"]
     violations_updated = 0
+
     for violation, value in totals_dict.items():
-        # Try both exact match and uppercase match
+        # Skip Night driving and Early start as we handled them directly
+        if violation in ["Night driving", "Early start"]:
+            continue
+            
+        # Only update if it's in our list of violations to update
+        if violation not in violations_to_update:
+            print(f"  ⊘ Skipping '{violation}' (not in update list)")
+            continue
+            
+        # APPLY col_shift here too!
+        col_idx = None
         if violation in col_map:
-            sheet.range((daily_row, col_map[violation])).value = value
-            violations_updated += 1
-            print(f"  ✓ Updated {violation}: {value}")
+            col_idx = col_map[violation] + col_shift  # ✅ ADD col_shift
         elif violation.upper() in col_map:
-            sheet.range((daily_row, col_map[violation.upper()])).value = value
+            col_idx = col_map[violation.upper()] + col_shift  # ✅ ADD col_shift
+        
+        if col_idx:
+            col_letter = xw.utils.col_name(col_idx)
+            print(f"  Writing '{violation}' = {value} to cell {col_letter}{daily_row}")
+            sheet.range((daily_row, col_idx)).value = value
             violations_updated += 1
             print(f"  ✓ Updated {violation}: {value}")
         else:
             print(f"  ⚠ Column '{violation}' not found in headers")
-    
-    print(f"  Total violations updated: {violations_updated}/{len(totals_dict)}")
 
+    print(f"  Total violations updated: {violations_updated}/{len(violations_to_update)}")
 
 def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
     """Append pulled violation data to OVERALL excel file using xlwings.
@@ -746,25 +908,47 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
                 else:
                     rows_added = append_to_sheet_xlwings(night_sheet, prepared_data, has_sn=False)
                     print(f"    ✓ Appended {rows_added} rows to {night_sheet.name}")
+
+    
         
         # Update filename date
+       # Update filename date
         yesterday_date = get_yesterday_date_string()
         yesterday_date_formatted = yesterday_date  # DD.MM.YYYY
-        
+
+        today_date = datetime.today().strftime("%d-%m-%Y")
+
         # Convert to YYYY-MM-DD for filtering
         try:
             dt = datetime.strptime(yesterday_date_formatted, "%d.%m.%Y")
-            latest_date_filter = dt.strftime("%Y-%m-%d")  # 2026-01-15
+            latest_date_filter = dt.strftime("%Y-%m-%d")  # 2026-01-23
+            latest_date_filter_ddmmyyyy = dt.strftime("%d.%m.%Y")  # 23.01.2026 for Over Speeding
         except Exception:
             latest_date_filter = yesterday_date_formatted
-        
+            latest_date_filter_ddmmyyyy = yesterday_date_formatted
+
+            # 2. After processing ALL sheets (before pivot table refresh), add:
+       # After all data appended, before pivot refresh
+        print(f"\n🔄 Forcing formulas to recalculate...")
+        try:
+            # Toggle calculation mode to force full recalc
+            wb.app.api.Calculation = -4135  # xlCalculationManual
+            wb.app.api.Calculation = -4105  # xlCalculationAutomatic
+            wb.app.api.CalculateFull()
+            print(f"  ✓ All formulas recalculated")
+        except Exception as e:
+            print(f"  ⚠ Recalculation warning: {e}")
+
+
+                
         print(f"\n🔄 Refreshing Pivot Tables...")
-        refresh_pivot_tables_and_filter(wb, "FOR SHEQ", latest_date_filter)
-        grand_totals = read_forsheq_grand_totals(wb)
-        update_overall_summary_daily_row(wb, grand_totals, dt.strftime("%d-%b-%y"))
+        refresh_pivot_tables_and_filter(wb, "FOR SHEQ", latest_date_filter, latest_date_filter_ddmmyyyy)
+        grand_totals, night_driving_val, early_start_val = read_forsheq_grand_totals(wb)
+        update_overall_summary_daily_row(wb, grand_totals, dt.strftime("%d-%b-%y"), night_driving_val, early_start_val)
         
         # Save workbook
-        new_filename = f"OVERALL VIOLATIONS REPORT {yesterday_date}.xlsx"
+        new_filename = f"OVERALL VIOLATIONS REPORT {today_date}.xlsx"
+
         new_path = os.path.join(overall_excel_folder, new_filename)
         
         print(f"\n💾 Saving updated OVERALL excel...")
@@ -805,7 +989,7 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
             except:
                 pass
         
-        print(f"\n⚠ Restoring from backup1...")
+        print(f"\n⚠ Restoring from backup...")
         try:
             shutil.copyfile(backup_path, overall_path)
             print(f"✓ Original file restored")
@@ -823,4 +1007,6 @@ if __name__ == "__main__":
         sys.exit(1)
     
     raw_folder = sys.argv[1]
-    overall_folder = sys.argv
+    overall_folder = sys.argv[2]
+    
+    append_violations_to_overall(raw_folder, overall_folder)

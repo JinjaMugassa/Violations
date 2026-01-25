@@ -12,11 +12,22 @@ TEMPLATE_NAME = "01_80 KPH_RPT_SPEED VIOLATION REPORT"
 
 
 def find_latest_speed_json(folder):
-    """Return the latest SPEED_VIOLATION JSON file in the folder."""
+    """Return the latest SPEED_VIOLATION JSON file in the folder or its 'raw' subfolder."""
+    # First try the raw subfolder
+    raw_folder = os.path.join(folder, "raw")
+    if os.path.exists(raw_folder):
+        pattern = os.path.join(raw_folder, "*SPEED_VIOLATION*_debug.json")
+        files = glob.glob(pattern)
+        if files:
+            files.sort(key=os.path.getmtime, reverse=True)
+            print(f"✓ Found SPEED_VIOLATION JSON in raw subfolder: {os.path.basename(files[0])}")
+            return files[0]
+    
+    # Fall back to main folder
     pattern = os.path.join(folder, "*SPEED_VIOLATION*_debug.json")
     files = glob.glob(pattern)
     if not files:
-        print(f"⚠ No SPEED_VIOLATION JSON found in {folder}")
+        print(f"⚠ No SPEED_VIOLATION JSON found in {folder} or {raw_folder}")
         return None
     files.sort(key=os.path.getmtime, reverse=True)
     return files[0]
