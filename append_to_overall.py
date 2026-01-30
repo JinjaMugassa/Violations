@@ -455,6 +455,7 @@ def read_forsheq_grand_totals(wb):
 
         try:
             # For PivotTable9 which has both Night driving and Early start in COLUMNS
+            # For PivotTable9 which has both Night driving and Early start in COLUMNS
             if name == "PivotTable9":
                 table_range = pivot.TableRange1
                 print(f"    PivotTable9 table has {table_range.Rows.Count} rows, {table_range.Columns.Count} columns")
@@ -490,26 +491,28 @@ def read_forsheq_grand_totals(wb):
                         if col_idx == 1:
                             continue
                         
-                        # Match by row label if header is empty
+                        # ✅ Match by row label if header is empty - DON'T use fallback!
                         if label and ("EARLY" in label or "START" in label):
                             early_start_value = count
                             results["Early start"] = count
-                            print(f"        → Column {col_idx} is Early start (for C4): {count}")
+                            print(f"        → Column {col_idx} is Early start: {count}")
                         elif label and ("NIGHT" in label or "DRIVING" in label):
                             night_driving_value = count
                             results["Night driving"] = count
-                            print(f"        → Column {col_idx} is Night driving (for D4): {count}")
-                        # If no label, use column position as fallback
-                        elif col_idx == 2:
-                            # Assume column 2 is Early start
-                            early_start_value = count
-                            results["Early start"] = count
-                            print(f"        → Column 2 (assumed Early start for C4): {count}")
-                        elif col_idx == 3:
-                            # Assume column 3 is Night driving
-                            night_driving_value = count
-                            results["Night driving"] = count
-                            print(f"        → Column 3 (assumed Night driving for D4): {count}")
+                            print(f"        → Column {col_idx} is Night driving: {count}")
+                        # ❌ REMOVE THIS FALLBACK - it causes the bug!
+                        # The fallback was assigning values when it shouldn't
+                
+                # ✅ After the loop, set any unassigned values to 0
+                if early_start_value is None:
+                    early_start_value = 0
+                    results["Early start"] = 0
+                    print(f"    → Early start not found, setting to 0")
+                
+                if night_driving_value is None:
+                    night_driving_value = 0
+                    results["Night driving"] = 0
+                    print(f"    → Night driving not found, setting to 0")
                 
             else:
                 # For other pivot tables, just get the grand total

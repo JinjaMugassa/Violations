@@ -17,6 +17,14 @@ BORDER_LOCATIONS = [
     'TUNDUMA PARKING',
     'KASUMBALESA 114 PARKING',
     'GALCO ICD UDA',
+    'GALCO ICD MBOZI',
+    'TICS',
+    'TPA PORT',
+    'DP WORLD',
+    'KIOO',
+    'CHANGOMBE',
+    'KITOPENI',
+    'MWENGE YARD',
     'MBAGALA',
     'DAR ES SALAAM',
     'GL KURASINI YARD',
@@ -248,11 +256,11 @@ def process_night_driving(df, template_id, api):
             # Convert duration like "0:16:40" to timedelta
             duration_td = pd.to_timedelta(df[duration_col], errors='coerce')
 
-            # Keep only durations >= 10 minutes
-            df = df[duration_td >= pd.Timedelta(minutes=10)].copy()
+            # Keep only durations >= 20 minutes
+            df = df[duration_td >= pd.Timedelta(minutes=20)].copy()
 
             print(
-                f"  ✓ Duration filtered (<10 min removed): "
+                f"  ✓ Duration filtered (<20 min removed): "
                 f"{before_duration} -> {len(df)} rows"
             )
         else:

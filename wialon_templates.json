@@ -752,7 +752,7 @@
     "resource_name": "galcotz",
     "resource_id": 22504459,
     "template_id": "111",
-    "template_name": "!gtest",
+    "template_name": "JC451 camera alarms",
     "template_type": "Single Unit"
   },
   {
@@ -984,6 +984,27 @@
     "resource_id": 22504459,
     "template_id": "145",
     "template_name": "VIOLATION_GEOFENCE_POWER_BI- GENERAL_MJESHI PARKING",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "146",
+    "template_name": "copy JC451 camera alarms",
+    "template_type": "Single Unit"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "147",
+    "template_name": "DashCam Events",
+    "template_type": "Group"
+  },
+  {
+    "resource_name": "galcotz",
+    "resource_id": 22504459,
+    "template_id": "148",
+    "template_name": "RPT_UNITS LAST DATA_MASTER- GALCO LTD POWER BI REPORT- GEN- COUNTRY- SMARTSHEETS",
     "template_type": "Group"
   }
 ]
