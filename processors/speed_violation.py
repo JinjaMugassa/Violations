@@ -37,14 +37,14 @@ def process_speed_violation(df, template_id, api, json_folder=None):
     """Process speed violation report DataFrame.
 
     - Filters rows to keep only speeds >= 85 km/h
-    - Fills missing Time values from latest SPEED_VIOLATION JSON by Grouping column
+    - Replaces Time values entirely from latest SPEED_VIOLATION JSON by Grouping column
       and adjusts to Tanzania time (+3 hours)
     - Formats Time/Date columns to DD.MM.YYYY HH:MM:SS am/pm
     - Removes Speed, Avg speed, and Driver columns
     """
 
     # -------------------------------
-    # Fill missing Time from JSON backup
+    # Replace Time entirely from JSON backup (Excel has mixed date formats)
     # -------------------------------
     if json_folder:
         json_backup_path = find_latest_speed_json(json_folder)
@@ -58,39 +58,42 @@ def process_speed_violation(df, template_id, api, json_folder=None):
                 for row in backup_data:
                     try:
                         truck_id = row['c'][1]
-                        time_val_str = row['c'][3]['t']  # e.g., "07.01.2026 07:44:06 am"
-                        # Convert string → datetime and add 3 hours
+                        time_val_str = row['c'][3]['t']  # e.g., "01.02.2026 08:05:42 am"
+                        # Convert string → datetime with dayfirst=True (DD.MM.YYYY) and add 3 hours
                         time_val = pd.to_datetime(time_val_str, dayfirst=True) + timedelta(hours=3)
                         json_records.append({
                             'Grouping': truck_id,
                             'Time': time_val
                         })
-                    except Exception:
+                    except Exception as e:
+                        print(f"⚠ Failed to parse JSON row: {e}")
                         continue
 
                 if json_records:
                     df_backup = pd.DataFrame(json_records)
 
                     if 'Grouping' in df.columns and 'Time' in df_backup.columns:
+                        # Drop Excel Time column entirely and replace with JSON values
+                        if 'Time' in df.columns:
+                            df = df.drop(columns=['Time'])
+                        
                         df = df.merge(
                             df_backup,
                             on='Grouping',
-                            how='left',
-                            suffixes=('', '_backup')
+                            how='left'
                         )
-                        # Fill missing Time values
-                        df['Time'] = df['Time'].combine_first(df['Time_backup'])
-                        df = df.drop(columns=['Time_backup'])
-                        print(f"✓ Filled missing 'Time' values from JSON backup using 'Grouping' (+3h Tanzania)")
+                        print(f"✓ Replaced 'Time' column entirely from JSON backup using 'Grouping' (+3h Tanzania)")
                     else:
                         print("⚠ 'Grouping' column not found or JSON missing Time — skipping JSON fill")
                 else:
                     print("⚠ JSON contained no valid records for filling")
 
             except Exception as e:
-                print(f"⚠ Failed to fill missing times from JSON backup: {e}")
+                print(f"⚠ Failed to replace times from JSON backup: {e}")
+                import traceback
+                traceback.print_exc()
 
-    print("Time column preview BEFORE processing:")
+    print("Time column preview AFTER JSON replacement:")
     time_cols = [c for c in df.columns if 'time' in str(c).lower()]
     for col in time_cols:
         print(df[col].head(10))
@@ -146,18 +149,27 @@ def process_speed_violation(df, template_id, api, json_folder=None):
                 print("Sample raw values:")
                 print(df[col].head(10).to_list())
 
+                # If already datetime, just format it
                 if pd.api.types.is_datetime64_any_dtype(df[col]):
-                    df[col] = df[col].dt.strftime('%d.%m.%Y %I:%M:%S %p').str.lower()
-                    print("  Column already datetime → formatted directly")
+                    df[col] = pd.to_datetime(df[col]).dt.strftime('%d.%m.%Y %I:%M:%S %p').str.lower()
+                    print(f"  ✓ Column already datetime → formatted to DD.MM.YYYY HH:MM:SS am/pm")
                     continue
 
+                # Otherwise try to parse strings
                 raw = df[col].astype(str).str.strip()
-                parsed = pd.to_datetime(raw, dayfirst=True, errors='coerce')
+                
+                # Try DD.MM.YYYY format with time first
+                parsed = pd.to_datetime(raw, format='%d.%m.%Y %I:%M:%S %p', errors='coerce')
                 mask = parsed.notna()
+
+                # For unparsed values, try with dayfirst=True
+                if (~mask).any():
+                    parsed[~mask] = pd.to_datetime(raw[~mask], dayfirst=True, errors='coerce')
+                    mask = parsed.notna()
 
                 failed_rows = df.loc[~mask, [col]].copy()
                 if not failed_rows.empty:
-                    print(f"  ❌ Unparsed values in '{col}':")
+                    print(f"  ⚠ Still unparsed values in '{col}':")
                     print(failed_rows.assign(raw_value=raw[~mask]))
 
                 df.loc[mask, col] = parsed.loc[mask].dt.strftime('%d.%m.%Y %I:%M:%S %p').str.lower()

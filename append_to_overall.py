@@ -154,11 +154,17 @@ def extract_date_from_event_time(event_time_str):
     return ''
 
 def extract_date_ddmmyyyy(event_time_str):
+    """Extract date in DD.MM.YYYY format from event time string.
+    
+    CRITICAL: Uses dayfirst=True to correctly interpret DD.MM.YYYY format dates.
+    Without this, '01.02.2026' would be interpreted as January 2nd instead of February 1st.
+    """
     try:
         if pd.isna(event_time_str) or str(event_time_str).strip() == '':
             return ''
 
-        dt = pd.to_datetime(event_time_str, errors='coerce')
+        # Use dayfirst=True to correctly interpret DD.MM.YYYY format
+        dt = pd.to_datetime(event_time_str, dayfirst=True, errors='coerce')
         if pd.notna(dt):
             return dt.strftime("%d.%m.%Y")
     except Exception:
@@ -283,6 +289,9 @@ def prepare_speed_data(raw_df, existing_df):
     }
     
     raw_df = raw_df.rename(columns=column_mapping)
+    
+    # CRITICAL: Use extract_date_ddmmyyyy which now has dayfirst=True
+    # This ensures '01.02.2026 11:05:42 am' is correctly interpreted as February 1st
     raw_df['RPT_DT'] = raw_df['Time'].apply(extract_date_ddmmyyyy)
     raw_df['DRIVER NAME'] = ''
     
