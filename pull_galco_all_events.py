@@ -17,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 import requests
 import openpyxl
+import pytz
 
 from wialon_api import WialonAPI
 from utils import get_local_timezone_offset, find_column
@@ -57,6 +58,7 @@ SUMMARY_ORDER = [
 ]
 
 EXCLUDED_EVENT_TYPES = {"NIGHT DRIVING", "LOW SPEED"}
+TANZANIA_TZ = pytz.timezone("Africa/Dar_es_Salaam")
 
 
 def parse_date_arg(date_str):
@@ -72,14 +74,18 @@ def parse_date_arg(date_str):
 
 
 def get_system_today_date():
-    """Return today's date based on the machine's local date."""
-    return datetime.now().date()
+    """Return today's date in Tanzania timezone."""
+    return datetime.now(TANZANIA_TZ).date()
 
 
-def get_day_interval_tz(target_date):
+def get_day_interval_tz(target_date, until_now=False):
     tz_local = timezone(timedelta(hours=3))
     start_dt = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0, tzinfo=tz_local)
-    end_dt = start_dt + timedelta(days=1) - timedelta(seconds=1)
+    if until_now:
+        now_local = datetime.now(tz_local)
+        end_dt = now_local if now_local >= start_dt else start_dt
+    else:
+        end_dt = start_dt + timedelta(days=1) - timedelta(seconds=1)
     return int(start_dt.timestamp()), int(end_dt.timestamp())
 
 
@@ -90,6 +96,11 @@ def format_ddmmyyyy_hhmmss(val):
         dt = pd.to_datetime(val, dayfirst=True, errors="coerce")
         if pd.isna(dt):
             return str(val).strip()
+        # Wialon report datetime values are treated as UTC and displayed in Tanzania time.
+        if getattr(dt, "tzinfo", None) is None:
+            dt = pytz.UTC.localize(dt.to_pydatetime()).astimezone(TANZANIA_TZ)
+        else:
+            dt = dt.tz_convert(TANZANIA_TZ)
         return dt.strftime("%d.%m.%Y %H:%M:%S")
     except Exception:
         return str(val).strip()
@@ -165,6 +176,41 @@ def exec_report_raw(api, object_id, template_id, interval_from, interval_to, out
         rows_list = api._fetch_report_rows(row_count, output_path)
 
     return headers, rows_list, data
+
+
+def save_unit_debug_json(output_path, unit_id, unit_name, headers, rows_list):
+    """Save per-unit pulled rows for traceability."""
+    try:
+        base_name = os.path.splitext(os.path.basename(output_path))[0]
+        debug_dir = os.path.join(os.path.dirname(output_path), f"{base_name}_unit_debug")
+        os.makedirs(debug_dir, exist_ok=True)
+        safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(unit_name))
+        debug_path = os.path.join(debug_dir, f"unit_{unit_id}_{safe_name}.json")
+        payload = {
+            "unit_id": unit_id,
+            "unit_name": unit_name,
+            "headers": headers or [],
+            "rows": rows_list or [],
+        }
+        with open(debug_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def save_group_debug_json(output_path, headers, rows_list):
+    """Save the group pull rows for traceability."""
+    try:
+        base_name = os.path.splitext(os.path.basename(output_path))[0]
+        debug_path = os.path.join(os.path.dirname(output_path), f"{base_name}_group_pull.json")
+        payload = {
+            "headers": headers or [],
+            "rows": rows_list or [],
+        }
+        with open(debug_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 
 def rows_to_df(api, headers, rows_list):
@@ -310,10 +356,10 @@ def build_summary_df(events_df):
         return pd.DataFrame(columns=["EVENTS", "TOTAL EVENTS", "REMARK"])
 
     summary = (
-        events_df.groupby("Notification text")["Count of Event time"]
-        .sum()
+        events_df.groupby("Notification text")["Row Labels"]
+        .nunique()
         .reset_index()
-        .rename(columns={"Notification text": "EVENTS", "Count of Event time": "TOTAL EVENTS"})
+        .rename(columns={"Notification text": "EVENTS", "Row Labels": "TOTAL EVENTS"})
     )
 
     summary["EVENTS"] = summary["EVENTS"].fillna("").astype(str).str.strip()
@@ -426,7 +472,11 @@ def main():
         target_date = parse_date_arg(date_arg)
     else:
         target_date = get_system_today_date() if args.day_mode == "today" else (get_system_today_date() - timedelta(days=1))
-    interval_from, interval_to = get_day_interval_tz(target_date)
+    today_tz = get_system_today_date()
+    interval_from, interval_to = get_day_interval_tz(
+        target_date,
+        until_now=(target_date == today_tz),
+    )
     date_str = target_date.strftime("%d.%m.%Y")
 
     output_path = os.path.join(output_dir, f"{group_name}_EVENTS_{date_str}.xlsx")
@@ -448,6 +498,7 @@ def main():
         if g_headers is None:
             print("Failed to fetch group report")
             return 1
+        save_group_debug_json(output_path, g_headers, g_rows)
 
         unit_map = extract_unit_mapping(g_headers, g_rows)
         unit_ids = list(unit_map.keys())
@@ -466,6 +517,7 @@ def main():
             )
             if headers is None:
                 continue
+            save_unit_debug_json(output_path, unit_id, unit_name, headers, rows_list)
             df = rows_to_df(api, headers, rows_list)
             if df is None or df.empty:
                 continue
