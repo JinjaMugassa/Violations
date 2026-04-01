@@ -28,10 +28,9 @@ def find_overall_excel(base_folder):
     return latest_file, date_str
 
 
-def get_yesterday_date_string():
-    """Get yesterday's date in DD.MM.YYYY format."""
-    yesterday = datetime.now() - timedelta(days=1)
-    return yesterday.strftime("%d.%m.%Y")
+def get_today_date_string():
+    """Get today's date in DD.MM.YYYY format."""
+    return datetime.now().strftime("%d.%m.%Y")
 
 
 def extract_date_from_event_time(event_time_str):
@@ -47,6 +46,184 @@ def extract_date_from_event_time(event_time_str):
         pass
     
     return ''
+
+
+def find_latest_raw_file(raw_reports_folder, token):
+    """Find latest report file in raw folder by token."""
+    files = [
+        os.path.join(raw_reports_folder, f)
+        for f in os.listdir(raw_reports_folder)
+        if token in f and f.endswith('.xlsx')
+    ]
+    if not files:
+        return None
+    return max(files, key=os.path.getmtime)
+
+
+def parse_report_date(value):
+    """Parse a report date in either YYYY-MM-DD or DD.MM.YYYY style."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except Exception:
+            continue
+    try:
+        dt = pd.to_datetime(text, errors='coerce', dayfirst=True)
+        if pd.notna(dt):
+            return dt.date()
+    except Exception:
+        pass
+    return None
+
+
+def to_date_series(series):
+    """Convert a pandas series of mixed date strings to date objects."""
+    return series.apply(parse_report_date)
+
+
+def update_overall_summary_row(wb, rpt_date):
+    """Update OVERALL SUMMARY totals for a specific report date."""
+    if rpt_date is None or "OVERALL SUMMARY " not in [s.name for s in wb.sheets]:
+        return
+
+    def read_sheet_df(sheet_name):
+        if sheet_name not in [s.name for s in wb.sheets]:
+            return pd.DataFrame()
+        df = wb.sheets[sheet_name].used_range.options(pd.DataFrame, header=1, index=False).value
+        if df is None:
+            return pd.DataFrame()
+        return df
+
+    idling_df = read_sheet_df("IDLING VIOLATION")
+    idling_total = 0
+    if not idling_df.empty and "RPT_DT" in idling_df.columns:
+        mask = to_date_series(idling_df["RPT_DT"]) == rpt_date
+        if "NO OF EVENTS" in idling_df.columns:
+            idling_total = pd.to_numeric(idling_df.loc[mask, "NO OF EVENTS"], errors="coerce").fillna(0).sum()
+
+    harsh_df = read_sheet_df("HARSH BRAKE VIOLATION")
+    harsh_total = 0
+    if not harsh_df.empty and "RPT_DT" in harsh_df.columns:
+        mask = to_date_series(harsh_df["RPT_DT"]) == rpt_date
+        if "Count of Time received" in harsh_df.columns:
+            harsh_total = pd.to_numeric(harsh_df.loc[mask, "Count of Time received"], errors="coerce").fillna(0).sum()
+
+    speed_df = read_sheet_df(" OVER SPEEDING VIOLATION ")
+    speed_total = 0
+    if not speed_df.empty and "RPT_DT" in speed_df.columns:
+        mask = to_date_series(speed_df["RPT_DT"]) == rpt_date
+        if "Count" in speed_df.columns:
+            speed_total = pd.to_numeric(speed_df.loc[mask, "Count"], errors="coerce").fillna(0).sum()
+
+    night_df = read_sheet_df("NIGHT DRIVING REPORT ")
+    night_driving_total = 0
+    early_start_total = 0
+    if not night_df.empty and "RPT_DT" in night_df.columns:
+        mask = to_date_series(night_df["RPT_DT"]) == rpt_date
+        offense_col = "Offense" if "Offense" in night_df.columns else None
+        if offense_col:
+            offenses = night_df.loc[mask, offense_col].astype(str).str.strip().str.lower()
+            night_driving_total = int((offenses == "night driving").sum())
+            early_start_total = int((offenses == "early start").sum())
+
+    summary_sheet = wb.sheets["OVERALL SUMMARY "]
+    summary_sheet.range("B4").value = rpt_date.strftime("%d-%b-%Y")
+    summary_sheet.range("C4").value = int(night_driving_total)
+    summary_sheet.range("D4").value = int(early_start_total)
+    summary_sheet.range("G4").value = float(idling_total)
+    summary_sheet.range("H4").value = float(harsh_total)
+    summary_sheet.range("I4").value = float(speed_total)
+
+
+def update_for_sheq_rpt_dt_filters(wb):
+    """Refresh FOR SHEQ pivots and set RPT_DT page filters to latest available date."""
+    if "FOR SHEQ" not in [s.name for s in wb.sheets]:
+        return None
+
+    sheq = wb.sheets["FOR SHEQ"]
+    latest_global = None
+    rpt_fields = []
+
+    try:
+        pivot_count = sheq.api.PivotTables().Count
+    except Exception:
+        return None
+
+    for i in range(1, pivot_count + 1):
+        pt = sheq.api.PivotTables(i)
+        try:
+            pt.RefreshTable()
+        except Exception:
+            pass
+
+        rpt_field = None
+        try:
+            fields = pt.PivotFields()
+            for j in range(1, fields.Count + 1):
+                field = fields.Item(j)
+                if str(field.Name).strip().upper() == "RPT_DT":
+                    rpt_field = field
+                    break
+        except Exception:
+            continue
+
+        if rpt_field is None:
+            continue
+
+        candidates = []
+        try:
+            items = rpt_field.PivotItems()
+            for k in range(1, items.Count + 1):
+                try:
+                    name = str(items.Item(k).Name).strip()
+                except Exception:
+                    continue
+                if not name or name.lower() == "(blank)":
+                    continue
+                parsed = parse_report_date(name)
+                if parsed:
+                    candidates.append((parsed, name))
+        except Exception:
+            continue
+
+        if not candidates:
+            continue
+
+        candidates.sort(key=lambda x: x[0])
+        latest_date, _ = candidates[-1]
+        if latest_global is None or latest_date > latest_global:
+            latest_global = latest_date
+        rpt_fields.append((rpt_field, candidates))
+
+    if latest_global is not None:
+        for rpt_field, candidates in rpt_fields:
+            try:
+                rpt_field.EnableMultiplePageItems = False
+            except Exception:
+                pass
+            target_name = None
+            for date_value, name in candidates:
+                if date_value == latest_global:
+                    target_name = name
+                    break
+            if target_name is None:
+                target_name = candidates[-1][1]
+            try:
+                rpt_field.CurrentPage = target_name
+            except Exception:
+                for alt in (latest_global.strftime("%Y-%m-%d"), latest_global.strftime("%d.%m.%Y")):
+                    try:
+                        rpt_field.CurrentPage = alt
+                        break
+                    except Exception:
+                        continue
+
+    return latest_global
 
 
 def determine_offense(beginning_time):
@@ -388,13 +565,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_idling) if existing_idling is not None else 0}")
             
-            idling_files = [f for f in os.listdir(raw_reports_folder) if 'IDLING' in f and f.endswith('.xlsx')]
-            
-            if not idling_files:
+            raw_idling_path = find_latest_raw_file(raw_reports_folder, 'IDLING')
+
+            if not raw_idling_path:
                 print("  ⚠ No raw idling report found")
             else:
-                raw_idling_path = os.path.join(raw_reports_folder, idling_files[0])
-                print(f"  Reading: {idling_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_idling_path)}")
                 
                 raw_idling = pd.read_excel(raw_idling_path, sheet_name='Live Data')
                 print(f"  Raw data rows: {len(raw_idling)}")
@@ -421,14 +597,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_harsh) if existing_harsh is not None else 0}")
             
-            harsh_files = [f for f in os.listdir(raw_reports_folder) 
-                          if 'HARSH_BRAKE_SUMMARY' in f and f.endswith('.xlsx')]
-            
-            if not harsh_files:
+            raw_harsh_path = find_latest_raw_file(raw_reports_folder, 'HARSH_BRAKE_SUMMARY')
+
+            if not raw_harsh_path:
                 print("  ⚠ No raw harsh brake report found")
             else:
-                raw_harsh_path = os.path.join(raw_reports_folder, harsh_files[0])
-                print(f"  Reading: {harsh_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_harsh_path)}")
                 
                 raw_harsh = pd.read_excel(raw_harsh_path, sheet_name='Sheet1')
                 print(f"  Raw data rows: {len(raw_harsh)}")
@@ -460,14 +634,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_speed) if existing_speed is not None else 0}")
             
-            speed_files = [f for f in os.listdir(raw_reports_folder) 
-                          if 'SPEED_VIOLATION' in f and f.endswith('.xlsx')]
-            
-            if not speed_files:
+            raw_speed_path = find_latest_raw_file(raw_reports_folder, 'SPEED_VIOLATION')
+
+            if not raw_speed_path:
                 print("  ⚠ No raw speed violation report found")
             else:
-                raw_speed_path = os.path.join(raw_reports_folder, speed_files[0])
-                print(f"  Reading: {speed_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_speed_path)}")
                 
                 raw_speed = pd.read_excel(raw_speed_path, sheet_name='Live Data')
                 print(f"  Raw data rows: {len(raw_speed)}")
@@ -503,14 +675,12 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
 
             print(f"  Current rows: {len(existing_night) if existing_night is not None else 0}")
             
-            night_files = [f for f in os.listdir(raw_reports_folder) 
-                          if 'NIGHT_DRIVING' in f and f.endswith('.xlsx')]
-            
-            if not night_files:
+            raw_night_path = find_latest_raw_file(raw_reports_folder, 'NIGHT_DRIVING')
+
+            if not raw_night_path:
                 print("  ⚠ No raw night driving report found")
             else:
-                raw_night_path = os.path.join(raw_reports_folder, night_files[0])
-                print(f"  Reading: {night_files[0]}")
+                print(f"  Reading: {os.path.basename(raw_night_path)}")
                 
                 raw_night = pd.read_excel(raw_night_path, sheet_name='Live Data')
                 print(f"  Raw data rows: {len(raw_night)}")
@@ -523,9 +693,15 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
                     rows_added = append_to_sheet_xlwings(night_sheet, prepared_data, has_sn=False)
                     print(f"    ✓ Appended {rows_added} rows to {night_sheet.name}")
         
+        # Refresh FOR SHEQ pivots and enforce latest RPT_DT page filters
+        latest_rpt_date = update_for_sheq_rpt_dt_filters(wb)
+        if latest_rpt_date:
+            update_overall_summary_row(wb, latest_rpt_date)
+            print(f"✓ Updated OVERALL SUMMARY totals for {latest_rpt_date.strftime('%d.%m.%Y')}")
+
         # Update filename date
-        yesterday_date = get_yesterday_date_string()
-        new_filename = f"OVERALL VIOLATIONS REPORT {yesterday_date}.xlsx"
+        today_date = get_today_date_string()
+        new_filename = f"OVERALL VIOLATIONS REPORT {today_date}.xlsx"
         new_path = os.path.join(overall_excel_folder, new_filename)
         
         # Save workbook

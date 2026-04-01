@@ -13,8 +13,13 @@ TEMPLATE_NAME = "01_80 KPH_RPT_SPEED VIOLATION REPORT"
 
 def find_latest_speed_json(folder):
     """Return the latest SPEED_VIOLATION JSON file in the folder."""
-    pattern = os.path.join(folder, "*SPEED_VIOLATION*_debug.json")
-    files = glob.glob(pattern)
+    patterns = [
+        os.path.join(folder, "*SPEED_VIOLATION*_rows_debug*.json"),
+        os.path.join(folder, "*SPEED_VIOLATION*_debug.json"),
+    ]
+    files = []
+    for pattern in patterns:
+        files.extend(glob.glob(pattern))
     if not files:
         print(f"⚠ No SPEED_VIOLATION JSON found in {folder}")
         return None

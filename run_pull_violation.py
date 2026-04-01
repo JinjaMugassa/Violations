@@ -34,7 +34,7 @@ from night_driving import process_night_driving, TEMPLATE_ID as NIGHT_TEMPLATE_I
 
 # Configuration
 TARGET_GROUP = "TRANSIT_ALL_TRUCKS"
-DEFAULT_OUTPUT_FOLDER = r"C:\Users\SAMA\Downloads\OVERALL VIOLATION"
+DEFAULT_OUTPUT_FOLDER = r"C:\Users\arksecurity\Downloads\OVERALL VIOLATION"
 
 
 def pull_violation_reports(output_folder=None, group_name=None):
@@ -81,7 +81,7 @@ def pull_violation_reports(output_folder=None, group_name=None):
         # 1. Speed Violation Report
         print("📊 [1/4] Pulling Speed Violation Report...")
         speed_path = os.path.join(raw_folder, f"{group_name}_SPEED_VIOLATION_{timestamp}.xlsx")
-        json_folder = output_folder
+        json_folder = raw_folder
         success = api.execute_report(
             group_id,
             SPEED_TEMPLATE_ID,
