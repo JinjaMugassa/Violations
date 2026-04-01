@@ -277,9 +277,10 @@ class WialonAPI:
         
         return None
 
-    def execute_report(self, group_id, template_id, output_path, 
-                       interval_from=None, interval_to=None, 
-                       processor_func=None):
+    def execute_report(self, group_id, template_id, output_path,
+                       interval_from=None, interval_to=None,
+                       processor_func=None, table_index=0,
+                       sheet_name="Live Data"):
         """Execute a Wialon report and save to Excel."""
         tz_offset = get_local_timezone_offset()
         
@@ -319,7 +320,11 @@ class WialonAPI:
             print("✗ No tables in report result")
             return False
 
-        table = tables[0]
+        if table_index < 0 or table_index >= len(tables):
+            print(f"✗ Table index {table_index} out of range (available: {len(tables)})")
+            return False
+
+        table = tables[table_index]
         headers = table.get("header", [])
         row_count = table.get("rows", 0)
 
@@ -327,7 +332,7 @@ class WialonAPI:
             print("✗ Report has zero rows")
             return False
 
-        rows_list = self._fetch_report_rows(row_count, output_path)
+        rows_list = self._fetch_report_rows(row_count, output_path, table_index=table_index)
         
         if not rows_list:
             print("✗ No rows extracted")
@@ -350,18 +355,18 @@ class WialonAPI:
             df = processor_func(df, template_id, self)
 
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-            df.to_excel(writer, sheet_name="Live Data", index=False)
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         print(f"✓ Report saved: {output_path} ({len(parsed_rows)} rows)")
         return True
 
-    def _fetch_report_rows(self, row_count, output_path):
+    def _fetch_report_rows(self, row_count, output_path, table_index=0):
         """Fetch rows from executed report."""
         def fetch_rows(start, end):
             p = {
                 "svc": "report/select_result_rows",
                 "params": json.dumps({
-                    "tableIndex": 0,
+                    "tableIndex": int(table_index),
                     "config": {
                         "type": "range",
                         "data": {"from": start, "to": end, "level": 0}

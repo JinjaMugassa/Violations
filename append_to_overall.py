@@ -13,6 +13,7 @@ import glob
 from flask import app
 import pandas as pd
 from datetime import datetime, timedelta
+from datetime import date as dt_date
 import xlwings as xw
 
 
@@ -64,16 +65,73 @@ def parse_report_date(value):
     """Parse a report date in either YYYY-MM-DD or DD.MM.YYYY style."""
     if value is None:
         return None
+    if isinstance(value, (int, float)) and not pd.isna(value):
+        # Excel serial date support.
+        try:
+            serial = int(float(value))
+            if serial > 1000:
+                return (datetime(1899, 12, 30) + timedelta(days=serial)).date()
+        except Exception:
+            pass
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, dt_date):
+        return value
     text = str(value).strip()
     if not text:
         return None
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d", "%d/%m/%Y"):
+    if text.replace(".", "", 1).isdigit():
+        try:
+            serial = int(float(text))
+            if serial > 1000:
+                return (datetime(1899, 12, 30) + timedelta(days=serial)).date()
+        except Exception:
+            pass
+    for fmt in (
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%d.%m.%Y",
+        "%d.%m.%Y %H:%M:%S",
+        "%Y/%m/%d",
+    ):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except Exception:
+            continue
+    # Handle ambiguous slash dates like 03/08/2026 (could be 3-Aug or 8-Mar).
+    if "/" in text:
+        parts = text.split("/")
+        if len(parts) == 3 and all(p.isdigit() for p in parts):
+            p1, p2, p3 = [int(p) for p in parts]
+            if 1 <= p1 <= 12 and 1 <= p2 <= 12 and p3 >= 1900:
+                candidates = []
+                try:
+                    candidates.append(datetime.strptime(text, "%d/%m/%Y").date())
+                except Exception:
+                    pass
+                try:
+                    candidates.append(datetime.strptime(text, "%m/%d/%Y").date())
+                except Exception:
+                    pass
+                if candidates:
+                    today = datetime.now().date()
+                    # Prefer a non-future candidate nearest to today.
+                    non_future = [d for d in candidates if d <= today]
+                    if non_future:
+                        return min(non_future, key=lambda d: abs((today - d).days))
+                    return min(candidates, key=lambda d: abs((today - d).days))
+    for fmt in ("%d/%m/%Y", "%m/%d/%Y"):
         try:
             return datetime.strptime(text, fmt).date()
         except Exception:
             continue
     try:
-        dt = pd.to_datetime(text, errors='coerce', dayfirst=True)
+        # For ISO-like strings, avoid dayfirst swap.
+        if text[:4].isdigit() and len(text) >= 10 and text[4] in ("-", "/"):
+            dt = pd.to_datetime(text, errors='coerce', yearfirst=True)
+        else:
+            dt = pd.to_datetime(text, errors='coerce', dayfirst=True)
         if pd.notna(dt):
             return dt.date()
     except Exception:
@@ -132,12 +190,23 @@ def update_overall_summary_row(wb, rpt_date):
             early_start_total = int((offenses == "early start").sum())
 
     summary_sheet = wb.sheets["OVERALL SUMMARY "]
-    summary_sheet.range("B4").value = rpt_date.strftime("%d-%b-%Y")
-    summary_sheet.range("C4").value = int(night_driving_total)
-    summary_sheet.range("D4").value = int(early_start_total)
-    summary_sheet.range("G4").value = float(idling_total)
-    summary_sheet.range("H4").value = float(harsh_total)
-    summary_sheet.range("I4").value = float(speed_total)
+    last_row = summary_sheet.used_range.last_cell.row
+    b_values = summary_sheet.range(f"B1:B{last_row}").value
+    if not isinstance(b_values, list):
+        b_values = [b_values]
+
+    # Prefer working within the visible summary table block near top of sheet.
+    scan_limit = min(last_row, 200)
+
+    # Keep summary updates inside the visible table daily row.
+    target_row = 4
+
+    summary_sheet.range(f"B{target_row}").value = rpt_date.strftime("%d-%b-%y")
+    summary_sheet.range(f"C{target_row}").value = int(night_driving_total)
+    summary_sheet.range(f"D{target_row}").value = int(early_start_total)
+    summary_sheet.range(f"G{target_row}").value = float(idling_total)
+    summary_sheet.range(f"H{target_row}").value = float(harsh_total)
+    summary_sheet.range(f"I{target_row}").value = float(speed_total)
 
 
 def update_for_sheq_rpt_dt_filters(wb):
@@ -148,6 +217,7 @@ def update_for_sheq_rpt_dt_filters(wb):
     sheq = wb.sheets["FOR SHEQ"]
     latest_global = None
     rpt_fields = []
+    today = datetime.now().date()
 
     try:
         pivot_count = sheq.api.PivotTables().Count
@@ -156,6 +226,10 @@ def update_for_sheq_rpt_dt_filters(wb):
 
     for i in range(1, pivot_count + 1):
         pt = sheq.api.PivotTables(i)
+        try:
+            pt.PivotCache().MissingItemsLimit = 0  # xlMissingItemsNone
+        except Exception:
+            pass
         try:
             pt.RefreshTable()
         except Exception:
@@ -195,7 +269,11 @@ def update_for_sheq_rpt_dt_filters(wb):
             continue
 
         candidates.sort(key=lambda x: x[0])
-        latest_date, _ = candidates[-1]
+        non_future = [x for x in candidates if x[0] <= today]
+        if non_future:
+            latest_date, _ = non_future[-1]
+        else:
+            latest_date, _ = candidates[-1]
         if latest_global is None or latest_date > latest_global:
             latest_global = latest_date
         rpt_fields.append((rpt_field, candidates))
@@ -232,18 +310,142 @@ def determine_offense(beginning_time):
         dt = pd.to_datetime(beginning_time, errors='coerce')
         if pd.notna(dt):
             hour = dt.hour
-            if hour in [4, 5]:
-                return "Early start"
-            elif hour in [20, 21, 22, 23]:
-                return "Night driving"
+            minute = dt.minute
+            if (hour == 4) or (hour == 5 and minute <= 39):
+                return "Early start "
+            if (hour > 19) or (hour == 19 and minute >= 30):
+                return "Night driving "
     except Exception:
         pass
-    
+
     return ""
+
+
+def normalize_night_sheet_rpt_dt(night_sheet):
+    """Normalize NIGHT sheet RPT_DT values to YYYY-MM-DD text and standard datetime display."""
+    try:
+        last_row = night_sheet.used_range.last_cell.row
+        last_col = night_sheet.used_range.last_cell.column
+        if last_row < 2:
+            return
+
+        headers = [night_sheet.range((1, c)).value for c in range(1, last_col + 1)]
+        header_map = {str(h).strip().lower(): i + 1 for i, h in enumerate(headers) if h is not None and str(h).strip()}
+
+        rpt_col = header_map.get("rpt_dt")
+        begin_col = header_map.get("beginning")
+        end_col = header_map.get("end")
+        if rpt_col is None:
+            return
+
+        rpt_letter = xw.utils.col_name(rpt_col)
+        night_sheet.range(f"{rpt_letter}:{rpt_letter}").number_format = "@"
+
+        for r in range(2, last_row + 1):
+            rpt_val = night_sheet.range((r, rpt_col)).value
+            parsed = parse_report_date(rpt_val)
+            if parsed is None and begin_col is not None:
+                parsed = parse_report_date(night_sheet.range((r, begin_col)).value)
+            if parsed is not None:
+                # Prefix apostrophe to keep exact text and avoid Excel date serial coercion.
+                night_sheet.range((r, rpt_col)).value = "'" + parsed.strftime("%Y-%m-%d")
+
+        if begin_col is not None:
+            b_letter = xw.utils.col_name(begin_col)
+            night_sheet.range(f"{b_letter}:{b_letter}").number_format = "yyyy-mm-dd hh:mm:ss"
+        if end_col is not None:
+            e_letter = xw.utils.col_name(end_col)
+            night_sheet.range(f"{e_letter}:{e_letter}").number_format = "yyyy-mm-dd hh:mm:ss"
+    except Exception:
+        pass
+
+
+def normalize_overspeed_sheet_datetime_format(speed_sheet):
+    """Normalize existing overspeed sheet Time/RPT_DT values to standard formats."""
+    try:
+        today = datetime.now().date()
+
+        def parse_overspeed_datetime(value):
+            if isinstance(value, datetime):
+                dt = value
+            else:
+                text = str(value).strip() if value is not None else ""
+                if not text or text.lower() in ("nan", "none", "nat"):
+                    return pd.NaT
+                dt = pd.NaT
+                # Prefer explicit formats to avoid day/month swapping.
+                if "." in text:
+                    for fmt in ("%d.%m.%Y %I:%M:%S %p", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y"):
+                        try:
+                            dt = datetime.strptime(text, fmt)
+                            break
+                        except Exception:
+                            continue
+                elif "/" in text:
+                    for fmt in ("%m/%d/%Y %I:%M:%S %p", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y",
+                                "%d/%m/%Y %I:%M:%S %p", "%d/%m/%Y %H:%M:%S", "%d/%m/%Y"):
+                        try:
+                            dt = datetime.strptime(text, fmt)
+                            break
+                        except Exception:
+                            continue
+                else:
+                    dt = pd.to_datetime(text, errors='coerce')
+
+            if pd.isna(dt):
+                return pd.NaT
+
+            # Correct swapped month/day for future dates (e.g. 2026-07-03 -> 2026-03-07).
+            try:
+                if dt.year == today.year and dt.date() > today and dt.day <= 12 and dt.month <= 12:
+                    swapped = datetime(dt.year, dt.day, dt.month, dt.hour, dt.minute, dt.second)
+                    if swapped.date() <= today:
+                        dt = swapped
+            except Exception:
+                pass
+
+            return dt
+
+        last_row = speed_sheet.used_range.last_cell.row
+        if last_row < 3:
+            return
+
+        header_row = 2
+        for r in range(1, min(12, last_row + 1)):
+            c_val = str(speed_sheet.range(f"C{r}").value or "").strip().upper()
+            d_val = str(speed_sheet.range(f"D{r}").value or "").strip().upper()
+            if c_val == "TIME" and d_val == "RPT_DT":
+                header_row = r
+                break
+
+        for r in range(header_row + 1, last_row + 1):
+            tval = speed_sheet.range(f"C{r}").value
+            dval = speed_sheet.range(f"D{r}").value
+
+            dt = parse_overspeed_datetime(tval)
+
+            if pd.notna(dt):
+                speed_sheet.range(f"C{r}").value = dt.strftime("%Y-%m-%d %H:%M:%S")
+                speed_sheet.range(f"D{r}").value = dt.strftime("%Y-%m-%d")
+            else:
+                parsed_date = parse_report_date(dval)
+                if parsed_date:
+                    speed_sheet.range(f"D{r}").value = parsed_date.strftime("%Y-%m-%d")
+
+        speed_sheet.range("C:C").number_format = "@"
+        speed_sheet.range("D:D").number_format = "@"
+    except Exception:
+        pass
 
 
 def prepare_idling_data(raw_df, existing_df):
     """Prepare idling data for appending."""
+    raw_df = raw_df.copy()
+    raw_df.columns = [str(c).strip() for c in raw_df.columns]
+    if existing_df is not None and not existing_df.empty:
+        existing_df = existing_df.copy()
+        existing_df.columns = [str(c).strip() for c in existing_df.columns]
+
     if '№' in raw_df.columns:
         raw_df = raw_df.drop(columns=['№'])
     
@@ -287,6 +489,12 @@ def prepare_idling_data(raw_df, existing_df):
 
 def prepare_harsh_brake_data(raw_df, existing_df):
     """Prepare harsh brake data for appending."""
+    raw_df = raw_df.copy()
+    raw_df.columns = [str(c).strip() for c in raw_df.columns]
+    if existing_df is not None and not existing_df.empty:
+        existing_df = existing_df.copy()
+        existing_df.columns = [str(c).strip() for c in existing_df.columns]
+
     if '№' in raw_df.columns:
         raw_df = raw_df.drop(columns=['№'])
     
@@ -330,6 +538,12 @@ def prepare_harsh_brake_data(raw_df, existing_df):
 
 def prepare_speed_data(raw_df, existing_df):
     """Prepare speed violation data for appending."""
+    raw_df = raw_df.copy()
+    raw_df.columns = [str(c).strip() for c in raw_df.columns]
+    if existing_df is not None and not existing_df.empty:
+        existing_df = existing_df.copy()
+        existing_df.columns = [str(c).strip() for c in existing_df.columns]
+
     if '№' in raw_df.columns:
         raw_df = raw_df.drop(columns=['№'])
     
@@ -343,6 +557,12 @@ def prepare_speed_data(raw_df, existing_df):
     }
     
     raw_df = raw_df.rename(columns=column_mapping)
+    if 'Time' in raw_df.columns:
+        t = pd.to_datetime(raw_df['Time'], errors='coerce', dayfirst=True)
+        if t.isna().any():
+            t2 = pd.to_datetime(raw_df['Time'], errors='coerce')
+            t = t.fillna(t2)
+        raw_df['Time'] = t.apply(lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else '')
     raw_df['RPT_DT'] = raw_df['Time'].apply(extract_date_from_event_time)
     raw_df['DRIVER NAME'] = ''
     
@@ -354,17 +574,21 @@ def prepare_speed_data(raw_df, existing_df):
     
     raw_df = raw_df[target_columns]
     
-    # Remove duplicates
+    # Remove duplicates using normalized datetime keys to avoid format-induced duplicates.
     if not existing_df.empty and 'TRUCK NO' in existing_df.columns and 'Time' in existing_df.columns:
+        # One row per truck/day is expected, so dedupe by TRUCK + RPT_DT.
+        existing_rpt = existing_df['RPT_DT'].astype(str).str.strip() if 'RPT_DT' in existing_df.columns else existing_df['Time'].astype(str).str.strip()
+        raw_rpt = raw_df['RPT_DT'].astype(str).str.strip() if 'RPT_DT' in raw_df.columns else raw_df['Time'].astype(str).str.strip()
+
         existing_keys = set(
-            existing_df['TRUCK NO'].astype(str) + '|' + existing_df['Time'].astype(str)
+            existing_df['TRUCK NO'].astype(str).str.strip() + '|' + existing_rpt
         )
-        
-        raw_df['_check_key'] = raw_df['TRUCK NO'].astype(str) + '|' + raw_df['Time'].astype(str)
+
+        raw_df['_check_key'] = raw_df['TRUCK NO'].astype(str).str.strip() + '|' + raw_rpt
         original_count = len(raw_df)
         raw_df = raw_df[~raw_df['_check_key'].isin(existing_keys)]
         raw_df = raw_df.drop(columns=['_check_key'])
-        
+
         removed = original_count - len(raw_df)
         if removed > 0:
             print(f"    Removed {removed} duplicate rows")
@@ -374,6 +598,12 @@ def prepare_speed_data(raw_df, existing_df):
 
 def prepare_night_driving_data(raw_df, existing_df):
     """Prepare night driving data for appending."""
+    raw_df = raw_df.copy()
+    raw_df.columns = [str(c).strip() for c in raw_df.columns]
+    if existing_df is not None and not existing_df.empty:
+        existing_df = existing_df.copy()
+        existing_df.columns = [str(c).strip() for c in existing_df.columns]
+
     if '№' in raw_df.columns:
         raw_df = raw_df.drop(columns=['№'])
     
@@ -389,12 +619,11 @@ def prepare_night_driving_data(raw_df, existing_df):
     
     raw_df = raw_df.rename(columns=column_mapping)
     raw_df['Driver name'] = ''
-    raw_df['TM NAME'] = ''
     raw_df['TC NAME'] = ''
     raw_df['RPT_DT'] = raw_df['Beginning'].apply(extract_date_from_event_time)
     raw_df['Offense'] = raw_df['Beginning'].apply(determine_offense)
     
-    target_columns = ['Vehicle no', 'Driver name', 'TM NAME', 'TC NAME', 'Beginning', 'RPT_DT', 
+    target_columns = ['Vehicle no', 'Driver name', 'TC NAME', 'Beginning', 'RPT_DT', 
                       'Initial location', 'End', 'Final location', 'DURATION', 'Mileage', 'Offense']
     
     for col in target_columns:
@@ -472,6 +701,67 @@ def append_to_sheet_xlwings(sheet, new_data_df, has_sn=True):
 
         # ---- Write data columns ----
         for col_idx, col_name in enumerate(new_data_df.columns, start=start_col):
+            value = row_data[col_name]
+            if pd.isna(value):
+                value = ''
+
+            col_letter = xw.utils.col_name(col_idx)
+            cell = sheet.range(f'{col_letter}{current_row}')
+            cell.value = value
+
+            try:
+                ref_cell = sheet.range(f'{col_letter}{style_row}')
+                cell.api.Font.Name = ref_cell.api.Font.Name
+                cell.api.Font.Size = ref_cell.api.Font.Size
+                cell.api.Font.Bold = ref_cell.api.Font.Bold
+                cell.number_format = ref_cell.number_format
+            except Exception:
+                pass
+
+        rows_added += 1
+
+    return rows_added
+
+
+def append_to_sheet_by_headers_xlwings(sheet, new_data_df, header_row=1):
+    """Append data by matching DataFrame columns to sheet headers (name-based, not position-based)."""
+    if new_data_df.empty:
+        return 0
+
+    last_row = sheet.used_range.last_cell.row
+    last_col = sheet.used_range.last_cell.column
+    style_row = max(2, last_row) if last_row > 1 else 2
+    rows_added = 0
+
+    # Build header -> column index map using stripped, case-insensitive keys.
+    header_values = [sheet.range((header_row, c)).value for c in range(1, last_col + 1)]
+    header_to_col = {}
+    for cidx, hval in enumerate(header_values, start=1):
+        if hval is None:
+            continue
+        key = str(hval).strip().lower()
+        if key and key not in header_to_col:
+            header_to_col[key] = cidx
+
+    # Keep only columns that exist in sheet headers.
+    write_columns = []
+    missing_columns = []
+    for col_name in new_data_df.columns:
+        key = str(col_name).strip().lower()
+        if key in header_to_col:
+            write_columns.append((col_name, header_to_col[key]))
+        else:
+            missing_columns.append(col_name)
+
+    if missing_columns:
+        print(f"    ⚠ Skipping columns not found in sheet header: {missing_columns}")
+    if not write_columns:
+        print("    ✗ No matching headers found for append")
+        return 0
+
+    for _, row_data in new_data_df.iterrows():
+        current_row = last_row + 1 + rows_added
+        for col_name, col_idx in write_columns:
             value = row_data[col_name]
             if pd.isna(value):
                 value = ''
@@ -665,12 +955,8 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
             print("  ✗ Sheet 'NIGHT DRIVING REPORT' not found")
         else:
             print(f"  Using sheet: '{night_sheet.name}'")
+            normalize_night_sheet_rpt_dt(night_sheet)
             existing_night = night_sheet.used_range.options(pd.DataFrame, header=1, index=False).value
-            # Force RPT_DT column to text (column D example)
-            night_sheet.range("F:F").number_format = "@"
-            night_sheet.range("J:J").number_format = "@"
-            night_sheet.range("E:E").number_format = "yyyy-mm-dd hh:mm:ss"
-            night_sheet.range("H:H").number_format = "yyyy-mm-dd hh:mm:ss"
 
 
             print(f"  Current rows: {len(existing_night) if existing_night is not None else 0}")
@@ -690,7 +976,7 @@ def append_violations_to_overall(raw_reports_folder, overall_excel_folder):
                 if prepared_data.empty:
                     print("  ℹ No new data to append (all duplicates)")
                 else:
-                    rows_added = append_to_sheet_xlwings(night_sheet, prepared_data, has_sn=False)
+                    rows_added = append_to_sheet_by_headers_xlwings(night_sheet, prepared_data, header_row=1)
                     print(f"    ✓ Appended {rows_added} rows to {night_sheet.name}")
         
         # Refresh FOR SHEQ pivots and enforce latest RPT_DT page filters
